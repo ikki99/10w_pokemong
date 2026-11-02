@@ -1,0 +1,22 @@
+{
+  "format_version": "1.21.0",
+  "minecraft:item": {
+    "description": {
+      "identifier": "poke:pokeball",
+      "menu_category": {
+        "category": "equipment"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "poke_pokeball"
+        }
+      },
+      "minecraft:max_stack_size": 16,
+      "minecraft:display_name": {
+        "value": "精靈球"
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "format_version": "1.21.0",
+  "minecraft:item": {
+    "description": {
+      "identifier": "poke:rising_badge",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "poke_rising_badge"
+        }
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:display_name": {
+        "value": "升龍徽章"
+      }
+    }
+  }
+}

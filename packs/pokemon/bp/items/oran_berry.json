@@ -1,0 +1,22 @@
+{
+  "format_version": "1.21.0",
+  "minecraft:item": {
+    "description": {
+      "identifier": "poke:oran_berry",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "poke_oran_berry"
+        }
+      },
+      "minecraft:max_stack_size": 16,
+      "minecraft:display_name": {
+        "value": "橘果"
+      }
+    }
+  }
+}
