@@ -9,6 +9,51 @@ Script API（`@minecraft/server`），沒有依賴任何外部模組載入器。
 > 專案性質：**非商業同人作品**。寶可夢角色與名稱的權利屬 Nintendo / Creatures / GAME FREAK，
 > 模型與貼圖來自開源專案（CC 授權，含非商業條款）。詳見 [授權與致謝](#授權與致謝)。
 
+![全部 57 種寶可夢](docs/images/species.png)
+
+---
+
+## 截圖 / Screenshots / スクリーンショット
+
+以下圖片**全部由包內素材自動生成**（`tools/gen_docs_images.py`），不是模擬圖也不是手繪示意——
+你看到的貼圖、蛋圖示、圖鑑頭像就是遊戲裡實際載入的檔案。
+
+### 全部 57 種寶可夢
+
+![species](docs/images/species.png)
+
+57 種基礎型，標註繁體中文 / English / 日本語 三種名稱。含 24 隻經典人氣角色、13 隻大型傳說、
+以及 20 隻後來追加的傳說與準傳說（三聖鳥、雷吉五兄弟、班基拉斯、暴飛龍、巨金怪、三首惡龍…）。
+
+### 異色（Shiny）對照
+
+![shiny](docs/images/shiny.png)
+
+55 組異色對照（左為本體、右為 ✦ 異色）。異色在遊戲中是**獨立實體型別**（`poke:<id>_shiny`），
+自然生成機率 **1/64**，有自己的貼圖、生怪蛋與三語名稱。
+
+### 112 個生怪蛋
+
+![eggs](docs/images/eggs.png)
+
+每個蛋的圖示是用該寶可夢的 3D 頭像等角投影合成蛋殼後畫出來的，手持右鍵即可召喚。
+蛋的名稱寫在資源包 `lang` 的 `item.spawn_egg.entity.poke:<id>.name`。
+
+### 圖鑑頭像
+
+![dex](docs/images/dex.png)
+
+圖鑑 GUI 左側顯示的 64×64 頭像。手持圖鑑右鍵開啟，可瀏覽已捕獲物種並直接召喚夥伴。
+
+### 精靈球與道具
+
+![items](docs/images/items.png)
+
+28 種球（含大師球、究極球、狩獵球…）、10 種進化石、6 種樹果、8 枚徽章，共 56 種道具。
+
+> 想看實際遊戲畫面（夥伴跟隨、捕捉演出、傳送廣場）：歡迎提 issue 或 PR 補上你自己的截圖，
+> 我會放在這一節。
+
 ---
 
 ## 目前規模
@@ -185,6 +230,11 @@ self-hosted servers — no Marketplace, no 2GB world-size workaround, multiplaye
 - Teleport plaza connecting multiple themed worlds through a BedrockConnect lobby
 - **Localized in `zh_CN`, `en_US` and `ja_JP`**
 
+![species](docs/images/species.png)
+
+Screenshots above are generated from the pack's own textures (`tools/gen_docs_images.py`) —
+see the [Screenshots](#截圖--screenshots--スクリーンショット) section for the full set.
+
 Install: drop `packs/pokemon/bp` and `packs/pokemon/rp` into `behavior_packs/` and `resource_packs/`,
 enable both in the world settings (keep RP/BP versions in sync), then `/summon poke:pikachu`.
 
@@ -206,6 +256,9 @@ Minecraft **統合版（Switch / スマホ / Windows）向けのポケモンア�
 - 飛ぶ伝説のポケモンは実際に空中を移動・ホバリングします
 - テレポート広場から複数のテーマワールドへ移動（BedrockConnect ロビー経由）
 - **`zh_CN` / `en_US` / `ja_JP` の 3 言語対応**
+
+画像はパック内のテクスチャから自動生成したものです（`tools/gen_docs_images.py`）。
+一覧は[スクリーンショット](#截圖--screenshots--スクリーンショット)の節にあります。
 
 導入は `packs/pokemon/bp` と `packs/pokemon/rp` をそれぞれ `behavior_packs/` と `resource_packs/` に置き、
 ワールド設定で両方を有効化するだけです（RP と BP のバージョンは必ず揃えてください）。
