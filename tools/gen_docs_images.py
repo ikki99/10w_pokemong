@@ -45,7 +45,8 @@ def grid(images, cols, cell, pad, labels=None, title=None, label_h=34):
         y = head + pad + r * (cell + label_h + pad)
         box = Image.new("RGBA", (cell, cell), (0, 0, 0, 0))
         im2 = im.copy()
-        im2.thumbnail((cell - 8, cell - 8), Image.LANCZOS)
+        im2 = im2.resize((int(im2.width * min((cell - 8) / im2.width, (cell - 8) / im2.height)),
+                          int(im2.height * min((cell - 8) / im2.width, (cell - 8) / im2.height))), Image.LANCZOS)
         box.alpha_composite(im2, ((cell - im2.width) // 2, (cell - im2.height) // 2))
         canvas.paste(box, (x, y), box)
         if labels:
@@ -59,12 +60,13 @@ def main(pack_dir, out_dir):
     zh = open(os.path.join(rp, "texts", "zh_CN.lang"), encoding="utf-8").read()
     ja = open(os.path.join(rp, "texts", "ja_JP.lang"), encoding="utf-8").read()
     en = open(os.path.join(rp, "texts", "en_US.lang"), encoding="utf-8").read()
-    ZH = dict(re.findall(r"entity\.poke:([a-z_]+)\.name=(.+)", zh))
-    JA = dict(re.findall(r"entity\.poke:([a-z_]+)\.name=(.+)", ja))
-    EN = dict(re.findall(r"entity\.poke:([a-z_]+)\.name=(.+)", en))
+    ZH = dict(re.findall(r"^entity\.poke:([a-z_]+)\.name=(.+)", zh, re.M))
+    JA = dict(re.findall(r"^entity\.poke:([a-z_]+)\.name=(.+)", ja, re.M))
+    EN = dict(re.findall(r"^entity\.poke:([a-z_]+)\.name=(.+)", en, re.M))
 
     base = sorted(k for k in ZH if not k.endswith("_shiny"))
-    tex = {os.path.basename(p)[:-4]: p for p in glob.glob(os.path.join(rp, "textures", "entity", "pokemon", "*.png"))}
+    # 實體貼圖是 UV 展開圖，直接拼會變碎片 → 用圖鑑頭像（角色臉）
+    tex = {os.path.basename(p)[4:-4]: p for p in glob.glob(os.path.join(rp, "textures", "ui", "dex_*.png"))}
 
     # 1) 全物種
     imgs, labels = [], []
@@ -72,7 +74,7 @@ def main(pack_dir, out_dir):
         if pid in tex:
             imgs.append(Image.open(tex[pid]).convert("RGBA"))
             labels.append(f"{ZH[pid]}\n{EN.get(pid, pid)}\n{JA.get(pid, pid)}")
-    grid(imgs, 8, 116, 14, labels,
+    grid(imgs, 6, 150, 16, labels,
          f"{len(imgs)} species  ·  zh_CN / en_US / ja_JP").save(os.path.join(out_dir, "species.png"))
     print("species.png", len(imgs), "隻")
 
@@ -87,7 +89,7 @@ def main(pack_dir, out_dir):
         for path, tag in ((a, ""), (b, " ✦")):
             imgs.append(Image.open(path).convert("RGBA"))
             labels.append(f"{ZH[pid]}{tag}")
-    grid(imgs, 8, 104, 12, labels, f"Shiny variants ({len(pairs)} pairs, 1/64 chance)").save(
+    grid(imgs, 8, 130, 14, labels, f"Shiny variants ({len(pairs)} pairs, 1/64 chance)").save(
         os.path.join(out_dir, "shiny.png"))
     print("shiny pairs", len(pairs))
 
@@ -98,14 +100,10 @@ def main(pack_dir, out_dir):
     print("eggs.png", len(eggs))
 
     # 4) 圖鑑頭像
-    dex = sorted(glob.glob(os.path.join(rp, "textures", "ui", "dex_*.png")))
-    if dex:
-        grid([Image.open(p).convert("RGBA") for p in dex], 16, 56, 6, None,
-             f"{len(dex)} Pokedex portraits").save(os.path.join(out_dir, "dex.png"))
-        print("dex.png", len(dex))
+    # 圖鑑頭像已併進 species.png，不另外輸出
 
     # 5) 道具
-    ITEMS = dict(re.findall(r"item\.poke:([a-z_0-9]+)=(.*)", zh))
+    ITEMS = dict(re.findall(r"^item\.poke:([a-z_0-9]+)=(.*)", zh, re.M))
     texmap = json.load(open(os.path.join(rp, "textures", "item_texture.json"), encoding="utf-8"))["texture_data"]
     ic = {}
     for key, val in texmap.items():
