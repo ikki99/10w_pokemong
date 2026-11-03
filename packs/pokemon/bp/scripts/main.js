@@ -5,7 +5,7 @@ import { ActionFormData } from "@minecraft/server-ui";
 import "./worlds.js";  // 主題世界：傳送廣場 + 區域生成
 
 const TAG = "[Poke]";
-const VERSION = "4.9.1";
+const VERSION = "5.0.0";
 console.log(`${TAG} module loaded (v${VERSION})`);
 
 // ============================================================ 屬性
