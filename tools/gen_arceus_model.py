@@ -166,10 +166,10 @@ def build():
     C(horn_r, 4.1, 49, -24, 1.2, 2, 1.8, "goldL", rotation=[32, 0, 24], pivot=[3.5, 46, -27])
 
     # The signature wheel is a face-on cross with four green gems, not an edge-on yellow loop.
-    # Two raised rims wrap around the body; spokes and gem settings repeat on both sides.
+    # One raised cross-wheel sits on the front of the body, matching Arceus's single halo.
     ring = m.bone("ring", parent="body", pivot=(0, 22, -1))
     center_y, radius, segments = 22, 14, 28
-    for layer_index, layer_z in enumerate((-16.2, 10.5)):
+    for layer_index, layer_z in enumerate((-16.2,)):
         for quadrant in range(4):
             arc = m.bone(f"wheel_rim_{layer_index}_{quadrant}", parent="ring",
                          pivot=(0, center_y, layer_z), rotation=(0, 0, quadrant * 90))
@@ -187,12 +187,6 @@ def build():
             C(ring, gx - 2.55, gy - 2.55, layer_z - 1.75, 5.1, 5.1, 3.5, "goldD")
             C(ring, gx - 1.8, gy - 1.8, layer_z - 1.95, 3.6, 3.6, 3.9, "jewel")
             C(ring, gx - 1.25, gy + 0.2, layer_z - 2.1, 0.9, 0.8, 0.35, "pure")
-
-    # Four braces join the two gold cross-wheel faces around the abdomen.
-    for angle_deg in (0, 90, 180, 270):
-        a = math.radians(angle_deg)
-        gx, gy = 10.5 * math.cos(a), center_y + 10.5 * math.sin(a)
-        C(ring, gx - 1.15, gy - 1.15, -2.9, 2.3, 2.3, 14.6, "goldD")
 
     for name, x, z in (("leg0", -5.8, -9), ("leg1", 5.8, -9), ("leg2", -5.8, 9), ("leg3", 5.8, 9)):
         upper = m.bone(name, parent="body", pivot=(x, 19, z))
