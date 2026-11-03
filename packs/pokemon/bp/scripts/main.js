@@ -765,7 +765,7 @@ function showDex(player) {
   try { player.sendMessage(lines.join("\n")); } catch (e) {}
 
   // 圖示路徑：資源包 rp/textures/ui/dex_<id>.png（無副檔名）
-  const dexIcon = (id) => `textures/ui/dex_${id}`;
+  const dexIcon = (id) => `textures/ui/dex_${id}.png`;
 
   try {
     const form = new ActionFormData()
