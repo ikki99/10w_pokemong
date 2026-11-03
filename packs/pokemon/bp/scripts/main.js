@@ -943,6 +943,14 @@ function followerAttack(follower, target) {
   try {
     target.applyDamage(5, { cause: "entityAttack", damagingEntity: follower });
     try { target.dimension.spawnParticle("minecraft:critical_hit_emitter", target.location); } catch (e) {}
+    if (follower.typeId === "poke:arceus" || follower.typeId === "poke:arceus_shiny") {
+      fx(target.dimension, target.location, "minecraft:totem_particle", "random.levelup", 1.25);
+      try {
+        target.dimension.spawnParticle("minecraft:enchanting_table_particle", {
+          x: target.location.x, y: target.location.y + 0.8, z: target.location.z,
+        });
+      } catch (e) {}
+    }
     console.log(`${TAG} 夥伴 ${follower.typeId} 攻擊 ${target.typeId}`);
     return true;
   } catch (e) {
