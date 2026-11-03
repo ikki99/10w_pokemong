@@ -5,7 +5,7 @@ import { ActionFormData } from "@minecraft/server-ui";
 import "./worlds.js";  // 主題世界：傳送廣場 + 區域生成
 
 const TAG = "[Poke]";
-const VERSION = "5.0.0";
+const VERSION = "5.0.11";
 console.log(`${TAG} module loaded (v${VERSION})`);
 
 // ============================================================ 屬性
@@ -748,6 +748,36 @@ system.runInterval(() => {
   }
 }, 2);
 
+// Charmander and Charizard have tail-flame bones, but their transparent planes
+// can disappear with some texture/render combinations. Keep a small flame at
+// each moving tail tip for normal and shiny forms.
+system.runInterval(() => {
+  for (const dimId of ["overworld", "nether", "the_end"]) {
+    let dim;
+    try { dim = world.getDimension(dimId); } catch (e) { continue; }
+    for (const player of dim.getPlayers()) {
+      for (const type of ["poke:charmander", "poke:charmander_shiny", "poke:charizard", "poke:charizard_shiny"]) {
+        let entities = [];
+        try {
+          entities = dim.getEntities({ type, location: player.location, maxDistance: 32 });
+        } catch (e) {}
+        for (const entity of entities) {
+          try {
+            if (!entity.isValid) continue;
+            const view = entity.getViewDirection();
+            const loc = entity.location;
+            dim.spawnParticle("minecraft:basic_flame_particle", {
+              x: loc.x - view.x * 0.48,
+              y: loc.y + 0.32,
+              z: loc.z - view.z * 0.48,
+            });
+          } catch (e) {}
+        }
+      }
+    }
+  }
+}, 6);
+
 // ============================================================ 圖鑑面板
 
 function showDex(player) {
@@ -765,7 +795,7 @@ function showDex(player) {
   try { player.sendMessage(lines.join("\n")); } catch (e) {}
 
   // 圖示路徑：資源包 rp/textures/ui/dex_<id>.png（無副檔名）
-  const dexIcon = (id) => `textures/ui/dex_${id}.png`;
+  const dexIcon = (id) => `textures/ui/dex_${id}`;
 
   try {
     const form = new ActionFormData()
