@@ -237,6 +237,9 @@ def main():
         anim_path = os.path.join(rp_dir, "animations", f"{pid}.animations.json")
         data = load(anim_path) if os.path.exists(anim_path) else {"format_version": "1.8.0", "animations": {}}
         key = f"animation.poke_{pid}.fly"
+        if "--only-missing" in sys.argv and key in data.get("animations", {}):
+            print(f"  {pid}: 已有 fly 動畫（上游 air_fly），保留不動")
+            continue
         old = data["animations"].get(key, {})
         data["animations"][key] = anim
 

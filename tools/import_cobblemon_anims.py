@@ -18,11 +18,18 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from import_cobblemon_models import SPECIES, RAW  # noqa: E402
 
-try:                                   # 會飛的物種由 BP 決定，不是「有沒有 air_fly 動畫」
+# 會飛的物種由 BP 決定，不是「有沒有 air_fly 動畫」：傳說檔與一般物種檔都要收
+FLYERS = set()
+try:
     from poke_legendaries import LEGENDARY_SPECS as _LEG
-    FLYERS = {x["id"] for x in _LEG if x.get("flyer")}
+    FLYERS |= {x["id"] for x in _LEG if x.get("flyer")}
 except Exception:
-    FLYERS = set()
+    pass
+try:
+    from poke_species import NEW_SPECS as _NEW
+    FLYERS |= {x["id"] for x in _NEW if x.get("flyer")}
+except Exception:
+    pass
 
 # 別名 -> 上游動畫名後綴（依優先順序）
 SLOTS = {
