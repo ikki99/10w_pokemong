@@ -2,7 +2,7 @@
 """產生 README 用的示意圖（從 add-on 自己的貼圖拼成，不是畫假圖）。
 
 輸出 docs/images/*.png：
-  species.png  57 種寶可夢 + 中英日名稱
+  species.png  全部基礎型寶可夢 + 中英日名稱
   shiny.png    異色對照（本體 / 異色）
   eggs.png     112 個生怪蛋圖示
   items.png    精靈球與道具
@@ -66,7 +66,11 @@ def main(pack_dir, out_dir):
 
     base = sorted(k for k in ZH if not k.endswith("_shiny"))
     # 實體貼圖是 UV 展開圖，直接拼會變碎片 → 用圖鑑頭像（角色臉）
-    tex = {os.path.basename(p)[4:-4]: p for p in glob.glob(os.path.join(rp, "textures", "ui", "dex_*.png"))}
+    # 圖鑑頭像在包裡只留一份：新版放 textures/items/dex_<id>.png，舊版放 textures/ui/
+    tex = {}
+    for sub in ("items", "ui"):
+        for p in glob.glob(os.path.join(rp, "textures", sub, "dex_*.png")):
+            tex.setdefault(os.path.basename(p)[4:-4], p)
 
     # 1) 全物種
     imgs, labels = [], []

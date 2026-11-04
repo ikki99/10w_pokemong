@@ -39,12 +39,8 @@
 - rayquaza: `rayquaza.geo.json` + `rayquaza.png`
 - mew: `mew.geo.json` + `mew.png`
 - xerneas: `xerneas.geo.json` + `xerneas.png`
-
-## 追加素材（v4.0.0）
-
-- 異色（shiny）模型貼圖、道具圖示、裝飾方塊貼圖：取自 `kirbycope/cobblemon-bedrock`（repo 授權 MIT，每個物種另有 CC 授權檔，見 `licenses/`）。
-- 未使用對方的行為包／腳本／動畫控制器，只取貼圖。
-- 各物種授權檔：`licenses/<id>-LICENSE`
+- talonflame: `talonflame.geo.json` + `talonflame.png`
+- aegislash: `aegislash.geo.json` + `aegislash.png`
 
 ## 追加素材（v4.0.0）
 

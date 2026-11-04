@@ -5,7 +5,7 @@ import { ActionFormData } from "@minecraft/server-ui";
 import "./worlds.js";  // 主題世界：傳送廣場 + 區域生成
 
 const TAG = "[Poke]";
-const VERSION = "5.0.33";
+const VERSION = "5.1.0";
 console.log(`${TAG} module loaded (v${VERSION})`);
 
 // ============================================================ 屬性
@@ -70,6 +70,13 @@ const POKE_TYPE = {
   "poke:duraludon": "steel",
   "poke:baxcalibur": "dragon",
   "poke:garganacl": "rock",
+  "poke:yveltal": "dark",
+  "poke:talonflame": "fire",
+  "poke:noivern": "dragon",
+  "poke:aegislash": "steel",
+  "poke:hawlucha": "fighting",
+  "poke:aurorus": "ice",
+  "poke:tyrantrum": "rock",
 };
 
 const TOTAL_SPECIES = Object.keys(POKE_TYPE).length;
@@ -176,6 +183,13 @@ const NAME_ZH = {
   "poke:duraludon": "鋁鋼龍",
   "poke:baxcalibur": "戟脊龍",
   "poke:garganacl": "鹽石巨靈",
+  "poke:yveltal": "伊裴爾塔爾",
+  "poke:talonflame": "烈箭鷹",
+  "poke:noivern": "音波龍",
+  "poke:aegislash": "堅盾劍怪",
+  "poke:hawlucha": "摔角鷹人",
+  "poke:aurorus": "冰雪巨龍",
+  "poke:tyrantrum": "怪顎龍",
 };
 
 for (const id of Object.keys(NAME_ZH)) {
@@ -406,6 +420,44 @@ const MOVES = {
     try { t.addEffect("weakness", 120, { amplifier: 2 }); } catch (e) {}
     return "超夢：幻象光線！";
   },
+
+  oblivionwing(self, t) {
+    fx(t.dimension, t.location, "minecraft:soul_particle", "mob.wither.shoot", 1.5);
+    hit(self, t, 7, "dark");
+    try { self.addEffect("regeneration", 80, { amplifier: 1 }); } catch (e) {}
+    try { t.addEffect("weakness", 100, { amplifier: 1 }); } catch (e) {}
+    return "伊裴爾塔爾：死亡之翼！";
+  },
+  bravebird(self, t) {
+    fx(t.dimension, t.location, "minecraft:critical_hit_emitter", "mob.enderdragon.flap", 1.3);
+    hit(self, t, 7, "flying");
+    knock(self, t, 2.2, 0.6);
+    return "烈箭鷹：神鳥猛擊！";
+  },
+  boomburst(self, t) {
+    const dim = t.dimension;
+    fx(dim, t.location, "minecraft:knockback_roar_particle", "mob.warden.roar", 2.2);
+    hit(self, t, 5, "normal");
+    let extras = [];
+    try { extras = dim.getEntities({ location: t.location, maxDistance: 6, families: ["monster"] }); } catch (e) { extras = []; }
+    for (const e of extras) {
+      if (e.id === self.id || e.id === t.id) continue;
+      try { hit(self, e, 3, "normal"); } catch (err) {}
+    }
+    return "音波龍：爆音波！";
+  },
+  sacredsword(self, t) {
+    fx(t.dimension, t.location, "minecraft:critical_hit_emitter", "mob.irongolem.throw", 1.2);
+    hit(self, t, 6, "steel");
+    try { t.addEffect("slowness", 60, { amplifier: 1 }); } catch (e) {}
+    return "堅盾劍怪：聖劍！";
+  },
+  flyingpress(self, t) {
+    fx(t.dimension, t.location, "minecraft:critical_hit_emitter", "mob.player.attack.strong", 1.4);
+    hit(self, t, 6, "fighting");
+    knock(self, t, 1.8, 0.8);
+    return "摔角鷹人：飛身重壓！";
+  },
 };
 
 const ABILITY = {
@@ -433,6 +485,13 @@ const ABILITY = {
   "poke:mimikyu": "shadowclaw",
   "poke:sylveon": "fairywind",
   "poke:garchomp": "dragonclaw",
+  "poke:yveltal": "oblivionwing",
+  "poke:talonflame": "bravebird",
+  "poke:noivern": "boomburst",
+  "poke:aegislash": "sacredsword",
+  "poke:hawlucha": "flyingpress",
+  "poke:aurorus": "icebeam",
+  "poke:tyrantrum": "rockthrow",
 };
 
 
@@ -963,6 +1022,14 @@ function followerAttack(follower, target) {
       console.log(`${TAG} setProperty 失敗（攻擊動作不會播）: ${e}`);
     }
   }
+
+  // 讓客戶端播攻擊動作：屬性是 client_sync，RP 的 animate 條件讀它
+  try {
+    follower.setProperty("poke_attack", true);
+    system.runTimeout(() => {
+      try { follower.setProperty("poke_attack", false); } catch (e) {}
+    }, 12);
+  } catch (e) {}
 
   try {
     target.applyDamage(5, { cause: "entityAttack", damagingEntity: follower });

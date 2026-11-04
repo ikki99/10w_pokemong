@@ -9,7 +9,7 @@ Script API（`@minecraft/server`），沒有依賴任何外部模組載入器。
 > 專案性質：**非商業同人作品**。寶可夢角色與名稱的權利屬 Nintendo / Creatures / GAME FREAK，
 > 模型與貼圖來自開源專案（CC 授權，含非商業條款）。詳見 [授權與致謝](#授權與致謝)。
 
-![全部 57 種寶可夢](docs/images/species.png)
+![全部 64 種寶可夢](docs/images/species.png)
 
 ---
 
@@ -18,13 +18,13 @@ Script API（`@minecraft/server`），沒有依賴任何外部模組載入器。
 以下圖片**全部由包內素材自動生成**（`tools/gen_docs_images.py`），不是模擬圖也不是手繪示意——
 你看到的貼圖、蛋圖示、圖鑑頭像就是遊戲裡實際載入的檔案。
 
-### 全部 57 種寶可夢
+### 全部 64 種寶可夢
 
 ![species](docs/images/species.png)
 
-57 種基礎型，每格上方是**圖鑑頭像**（由方塊模型渲染）＋ 繁體中文 / English / 日本語 三種名稱——
-下方那張圖示就是遊戲內圖鑑 GUI 左側顯示的同一個檔案。含 24 隻經典人氣角色、13 隻大型傳說、
-以及 20 隻後來追加的傳說與準傳說（三聖鳥、雷吉五兄弟、班基拉斯、暴飛龍、巨金怪、三首惡龍…）。
+64 種基礎型，每格上方是**圖鑑頭像**（由方塊模型渲染）＋ 繁體中文 / English / 日本語 三種名稱——
+下方那張圖示就是遊戲內圖鑑 GUI 左側顯示的同一個檔案。含經典人氣角色、三聖鳥與雷吉兄弟、大型傳說（洛奇亞、鳳王、烈空坐、帝牙盧卡、
+帕路奇亞、騎拉帝納、阿爾宙斯、無極汰那），以及卡洛斯傳說 **伊裴爾塔爾**。
 
 ### 異色（Shiny）對照
 
@@ -33,7 +33,7 @@ Script API（`@minecraft/server`），沒有依賴任何外部模組載入器。
 55 組異色對照（左為本體、右為 ✦ 異色）。異色在遊戲中是**獨立實體型別**（`poke:<id>_shiny`），
 自然生成機率 **1/64**，有自己的貼圖、生怪蛋與三語名稱。
 
-### 112 個生怪蛋
+### 128 個生怪蛋
 
 ![eggs](docs/images/eggs.png)
 
@@ -55,12 +55,12 @@ Script API（`@minecraft/server`），沒有依賴任何外部模組載入器。
 
 | 項目 | 數量 |
 |---|---|
-| 寶可夢基礎型 | **57 種** |
-| 實體型別（含異色） | **112 個** |
-| 高精度模型（cobblemon 移植） | 51 種，其餘為程序化方塊模型 |
-| 動畫 | 走路 / 待機 / 攻擊 / 飛行，共 58 個動畫檔 |
-| 生怪蛋 | 112 個（含異色），附圖示與三語名稱 |
-| 圖鑑頭像 | 112 張 |
+| 寶可夢基礎型 | **64 種** |
+| 實體型別（含異色） | **128 個** |
+| 高精度模型（cobblemon 移植） | 57 種，其餘為自建模方塊模型 |
+| 動畫 | 走路 / 待機 / 攻擊 / 飛行，共 65 個動畫檔 |
+| 生怪蛋 | 128 個（含異色），附圖示與三語名稱 |
+| 圖鑑頭像 | 128 張 |
 | 精靈球 | 28 種（含大師球、究極球等） |
 | 其他道具 | 28 種（傷藥、神奇糖果、進化石、樹果、徽章…） |
 | 裝飾方塊 | 7 種（治療台、電腦、寶可夢絨 5 色） |
@@ -73,7 +73,7 @@ Script API（`@minecraft/server`），沒有依賴任何外部模組載入器。
 - **捕捉系統**：手持精靈球投擲，依血量、狀態、球種計算捕獲率，附捕捉演出與音效
 - **夥伴系統**：捕獲或召喚後自動跟隨（原生 AI 尋路），距離過遠會補位，空中不亂跳
 - **主動戰鬥**：夥伴會主動攻擊敵對生物，攻擊有揮擊動畫（以 `poke:attack` 實體屬性觸發客戶端動畫）
-- **招式與屬性克制**：24 個招式、完整屬性相剋表
+- **招式與屬性克制**：29 個招式、完整屬性相剋表
 - **圖鑑 GUI**：分頁瀏覽、左側頭像、可直接召喚夥伴
 - **異色（Shiny）**：1/64 機率自然生成，獨立實體型別，附專屬貼圖與名稱
 - **生怪蛋**：每隻都有自繪蛋圖示（3D 頭像合成蛋殼），三語名稱
@@ -107,8 +107,8 @@ data/
 `world_*_packs.json` 範例：
 
 ```json
-[{ "pack_id": "b3ca5287-acf7-577e-b046-bca0babb7e6d", "version": [4, 9, 0] }]
-[{ "pack_id": "3a0c853a-258b-5980-ad0b-1ee17cfd3c54", "version": [4, 9, 0] }]
+[{ "pack_id": "b3ca5287-acf7-577e-b046-bca0babb7e6d", "version": [5, 1, 0] }]
+[{ "pack_id": "3a0c853a-258b-5980-ad0b-1ee17cfd3c54", "version": [5, 1, 0] }]
 ```
 
 > **RP 與 BP 的版本號必須一致**（BP `manifest.json` 的 `dependencies` 要對上 RP 的 uuid + version），
@@ -144,7 +144,7 @@ data/
 ```
 packs/pokemon/
 ├── bp/                        # 行為包
-│   ├── entities/*.json        # 112 個實體定義（AI、數值、生成蛋）
+│   ├── entities/*.json        # 128 個實體定義（AI、數值、生成蛋）
 │   ├── items/*.json           # 精靈球與道具
 │   ├── blocks/*.json          # 裝飾方塊
 │   ├── spawn_rules/*.json     # 自然生成規則（依生態域）
@@ -193,7 +193,7 @@ python3 tools/validate_js.py packs/pokemon/bp/scripts/main.js   # 語法與 TDZ 
 | 內容 | 授權 |
 |---|---|
 | 本專案的腳本、工具、生怪蛋圖示、圖鑑頭像、世界生成、方塊與道具圖示 | **MIT**（見 [LICENSE](LICENSE)） |
-| 寶可夢模型與貼圖（`rp/models/entity/cobblemon/`、`rp/textures/entity/pokemon/`） | 來自 [kirbycope/cobblemon-bedrock](https://github.com/kirbycope/cobblemon-bedrock)，**CC 授權（含非商業條款）**，逐物種授權見 `packs/pokemon/rp/licenses/` |
+| 寶可夢模型與貼圖（`rp/models/entity/cobblemon/`、`rp/textures/entity/pokemon/`） | 來自 [kirbycope/cobblemon-bedrock](https://github.com/kirbycope/cobblemon-bedrock)，**CC 授權（含非商業條款）**，逐物種授權見 `docs/licenses/` |
 | 寶可夢角色、名稱、設計 | © Nintendo / Creatures Inc. / GAME FREAK Inc. |
 
 原始模型與貼圖我們未做修改，只調整 client entity 綁定（identifier 改為 `poke:*`）並加上自己的行為、
@@ -218,8 +218,8 @@ python3 tools/validate_js.py packs/pokemon/bp/scripts/main.js   # 語法與 TDZ 
 A **Pokémon add-on for Minecraft Bedrock Edition** (Switch / mobile / Windows) designed for
 self-hosted servers — no Marketplace, no 2GB world-size workaround, multiplayer ready.
 
-- **57 species, 112 entity types** (incl. shiny variants), 51 high-detail cobblemon-port models
-- Capture with 28 ball types, partner AI that follows and fights, 24 moves with a type chart
+- **64 species, 128 entity types** (incl. shiny variants), 57 high-detail cobblemon-port models
+- Capture with 28 ball types, partner AI that follows and fights, 29 moves with a type chart
 - In-game Pokédex GUI, custom spawn-egg icons, 1/64 shiny rate
 - Flying legendaries use real flight navigation and hover in the air
 - Teleport plaza connecting multiple themed worlds through a BedrockConnect lobby
@@ -245,8 +245,8 @@ Do not sell it or publish it on Minecraft Marketplace.
 Minecraft **統合版（Switch / スマホ / Windows）向けのポケモンアドオン**です。自前サーバーで動かす前提で、
 マーケットプレイスも 2GB のワールド制限回避も不要、マルチプレイに対応しています。
 
-- **57 種 / 112 エンティティ**（色違い含む）、うち 51 種は cobblemon 移植の高精度モデル
-- 28 種類のボールで捕獲、なかまは自動でついてきて戦う、わざ 24 種とタイプ相性
+- **64 種 / 128 エンティティ**（色違い含む）、うち 57 種は cobblemon 移植の高精度モデル
+- 28 種類のボールで捕獲、なかまは自動でついてきて戦う、わざ 29 種とタイプ相性
 - 図鑑 GUI、タマゴのアイコン、色違いは 1/64
 - 飛ぶ伝説のポケモンは実際に空中を移動・ホバリングします
 - テレポート広場から複数のテーマワールドへ移動（BedrockConnect ロビー経由）
@@ -266,6 +266,24 @@ Minecraft **統合版（Switch / スマホ / Windows）向けのポケモンア�
 ---
 
 ## 更新記錄 / Changelog
+
+### v5.1.0
+
+- **新增 7 隻寶可夢（卡洛斯批次，共 64 種）**：伊裴爾塔爾（Yveltal）、烈箭鷹、音波龍、
+  堅盾劍怪、摔角鷹人、冰雪巨龍、怪顎龍。每隻都有專屬招式、三語名稱、圖鑑頭像、生怪蛋、
+  自然生成規則與異色變體。
+- **伊裴爾塔爾是自建模**:上游沒有模型，用 22 骨骼 / 102 方塊親手建（三段式翅膀、灰白胸羽、
+  扇尾、青色眼＋紅色紋路），與帝牙盧卡／騎拉帝納同一個方塊工藝。
+- **新增 5 個招式**：死亡之翼（吸血）、神鳥猛擊、爆音波（範圍）、聖劍、飛身重壓。
+- **修掉異色實體的動畫綁定**：重新生成會把 `<id>_shiny` 的 `animations`／`scripts.animate` 退回
+  最基礎三條、`attack` 還指向不存在的 `animation.poke_<id>_shiny.attack` → 異色飛行寶可夢不扇翅。
+  新增 `tools/fix_shiny_entities.py`，以本體為準補齊（64 個檔）。
+- **修掉異色生怪蛋沒名字**：`gen_pokemon_extra.py` 的 `_PKG_DIR` 在函式內定義卻在模組層引用，
+  補蛋名那步直接拋 `NameError` 並被吞掉；修好後補了 128 條三語蛋名。
+- **資源包從 6.2MB 降到 3.9MB**（加了 7 隻反而更小）：346 個 JSON 全 minify、實體貼圖量化、
+  刪掉 `textures/ui/dex_*` 那 128 張重複圖（程式走 `textures/items/`）、授權檔移出包外到 `docs/licenses/`。
+- 新增工具：`tools/gen_yveltal_model.py`、`tools/slim_pack.py`、`tools/fix_shiny_entities.py`、
+  `tools/gen_docs_species.py`。
 
 ### v5.0.33
 
