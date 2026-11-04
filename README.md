@@ -267,6 +267,16 @@ Minecraft **統合版（Switch / スマホ / Windows）向けのポケモンア�
 
 ## 更新記錄 / Changelog
 
+### v5.0.33
+
+- **飛行扇翅**：15 隻飛行寶可夢重寫 `fly` 動畫（翅膀根部 ±30°、子骨 ±11°、0.6 秒一週期、
+  身體隨節奏浮動），並替 11 隻原本**完全沒有綁定飛行動畫**的物種補上 client entity 綁定。
+  選骨規則：只挑 `wing` 類骨骼，同時存在「展開 / 收合」兩組時只動展開的那組，避免兩套疊加打架。
+- **飛行速度放慢**：`movement` 0.6 → 0.32、`follow_owner.speed_multiplier` 1.4 → 0.85。
+- **修掉地面跟隨時往天上飄**：`behavior.float_wander` 的 `y_offset` 4 → 0.8、`y_dist` 8 → 2、
+  `xz_dist` 14 → 8、`float_duration` 1–3s → 2–4s；`follow_owner` 起停距離 6/2.5 → 8/3.5。
+- 新增 `tools/fix_flyers.py`：依模型真實骨骼重寫飛行動畫並調整飛行參數（`ROOT_AMP` / `FLAP_LEN` 可調）。
+
 ### v5.0.32
 
 - **圖鑑頭像修復**：`BASE_IDS` 存的是完整實體 ID（`poke:pikachu`），拼貼圖路徑時沒有去掉前綴，
