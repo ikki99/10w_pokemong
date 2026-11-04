@@ -14,7 +14,7 @@ import os
 import sys
 from collections import Counter
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 # 物種主色（拿不到貼圖時的後備）
 # 策展配色優先：直接從貼圖算主色會偏暗、偏綠（貼圖含陰影/多部件），辨識度差
@@ -77,13 +77,16 @@ def make_face(base_hex, seed_dark):
     return img
 
 
-def make_egg_sprite(base_hex, portrait, size=32):
+def make_egg_sprite(base_hex, portrait, size=32, pid=""):
     """蛋形外殼（主色 + 陰影 + 描邊）＋ 裡面貼 3D 頭像，並用蛋形遮罩裁切。
 
     生怪蛋的 overlay 貼圖是「原樣疊上去」的，不會被蛋形裁切，
     所以蛋形要自己畫進貼圖裡，然後把 base_color / overlay_color 都設成白色避免二次著色。
     """
-    w = size
+    # Supersample at 4x; the final 32px inventory icon keeps smooth curves and
+    # retains fine shell highlights without requiring larger Bedrock UI assets.
+    ss = 4
+    w = size * ss
     img = Image.new("RGBA", (w, w), (0, 0, 0, 0))
 
     # 蛋形遮罩
@@ -102,13 +105,41 @@ def make_egg_sprite(base_hex, portrait, size=32):
         sd.line([(0, y), (w, y)], fill=(min(255, int(r * f)), min(255, int(g * f)), min(255, int(b * f)), 255))
     img.paste(shell, (0, 0), mask)
 
+    # A restrained species-colored crest and flecks give each shell its own
+    # identity while preserving the recognizable egg silhouette.
+    import hashlib
+    seed = int(hashlib.sha256(pid.encode("utf-8")).hexdigest()[:8], 16)
+    crest = shade(base_hex, 0.62)
+    accent = shade(base_hex, 1.28)
+    d = ImageDraw.Draw(img)
+    d.arc([w * .25, w * .20, w * .75, w * .72], 205, 335,
+          fill=(255, 255, 255, 150), width=max(2, w // 36))
+    d.arc([w * .19, w * .10, w * .81, w * .94], 270, 80,
+          fill=(20, 24, 32, 105), width=max(2, w // 48))
+    # Shield-like belly medallion, placed behind the portrait.
+    cx, cy = w * .50, w * .61
+    points = [(cx, cy-w*.11), (cx+w*.13, cy-w*.035), (cx+w*.10, cy+w*.09),
+              (cx, cy+w*.15), (cx-w*.10, cy+w*.09), (cx-w*.13, cy-w*.035)]
+    d.polygon(points, fill=(*tuple(int(crest.lstrip('#')[i:i+2],16) for i in (0,2,4)), 170),
+              outline=(255,255,255,180), width=max(1,w//64))
+    # Deterministic shell flecks outside the face area.
+    import random
+    rng = random.Random(seed)
+    ac = tuple(int(accent.lstrip('#')[i:i+2],16) for i in (0,2,4))
+    for side in (-1, 1):
+        for _ in range(7):
+            x = int(w * (.50 + side * rng.uniform(.20,.29)))
+            y = int(w * rng.uniform(.36,.78))
+            rr = rng.uniform(.012,.024) * w
+            d.ellipse((x-rr,y-rr,x+rr,y+rr), fill=(*ac, rng.randint(90,175)))
+
     # 頭像：等比塞進蛋的中段
     if portrait is not None:
-        pw = int(w * 0.74)
+        pw = int(w * 0.67)
         head = portrait.copy()
         head.thumbnail((pw, pw), Image.LANCZOS)
         hx = (w - head.width) // 2
-        hy = int(w * 0.10) + (pw - head.height) // 2
+        hy = int(w * 0.14) + (pw - head.height) // 2
         layer = Image.new("RGBA", (w, w), (0, 0, 0, 0))
         layer.paste(head, (hx, hy), head)
         la = layer.split()[3].point(lambda v: v)
@@ -120,8 +151,9 @@ def make_egg_sprite(base_hex, portrait, size=32):
     d = ImageDraw.Draw(img)
     d.ellipse([w * 0.14, w * 0.06, w * 0.86, w * 0.96],
               outline=(28, 28, 28, 235), width=max(1, w // 24))
-    d.ellipse([w * 0.26, w * 0.13, w * 0.40, w * 0.24], fill=(255, 255, 255, 90))
-    return img
+    d.ellipse([w * 0.25, w * 0.12, w * 0.39, w * 0.24], fill=(255, 255, 255, 115))
+    d.ellipse([w * 0.29, w * 0.13, w * 0.34, w * 0.17], fill=(255, 255, 255, 190))
+    return img.resize((size, size), Image.Resampling.LANCZOS)
 
 
 def main(rp_dir):
@@ -148,7 +180,7 @@ def main(rp_dir):
 
         portrait_path = os.path.join(out_dir, f"portrait_{pid}.png")
         portrait = Image.open(portrait_path).convert("RGBA") if os.path.exists(portrait_path) else None
-        sprite = make_egg_sprite(base, portrait, size=32)
+        sprite = make_egg_sprite(base, portrait, size=32, pid=pid)
         sprite_path = os.path.join(out_dir, f"egg_{pid}.png")
         sprite.save(sprite_path)
 
@@ -180,7 +212,7 @@ def main(rp_dir):
     for i, (pid, base, sprite) in enumerate(previews):
         big = sprite.resize((cell, cell), Image.NEAREST)
         prev.alpha_composite(big, (pad + (i % cols) * (cell + pad), pad + (i // cols) * (cell + pad)))
-    prev_path = "/tmp/egg_preview.png"
+    prev_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "egg_preview.png")
     prev.save(prev_path)
     print(f"預覽圖: {prev_path}")
 

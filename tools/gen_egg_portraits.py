@@ -122,22 +122,55 @@ def head_anchor(geo):
     for want in ("head", "locator_head", "locator_face", "locator_item_face"):
         b = by_name.get(want)
         if b and b.get("pivot"):
-            return list(b["pivot"]), want
+            return world_point(geo, b, b["pivot"]), want
     for name, b in by_name.items():
         if name and "head" in name.lower() and b.get("pivot"):
-            return list(b["pivot"]), name
+            return world_point(geo, b, b["pivot"]), name
     cubes = [(b, c) for b in geo.get("bones", []) for c in b.get("cubes", [])]
     if not cubes:
         return [0, 0, 0], "none"
-    xs = [c["origin"][0] + c["size"][0] / 2 + b.get("pivot", [0, 0, 0])[0] for b, c in cubes]
-    zs = [c["origin"][2] + c["size"][2] / 2 + b.get("pivot", [0, 0, 0])[2] for b, c in cubes]
-    ys = [c["origin"][1] + c["size"][1] + b.get("pivot", [0, 0, 0])[1] for b, c in cubes]
+    centers = [cube_world_center(geo, b, c) for b, c in cubes]
+    xs = [p[0] for p in centers]
+    zs = [p[2] for p in centers]
+    ys = [p[1] for p in centers]
     return [(min(xs) + max(xs)) / 2, max(ys) - 3, (min(zs) + max(zs)) / 2], "bbox-top"
 
 
-def cube_world_center(bone, cube):
-    pivot = bone.get("pivot", [0, 0, 0])
-    return [cube["origin"][i] + pivot[i] + cube["size"][i] / 2 for i in range(3)]
+def rotate_point(point, pivot, rotation):
+    p = np.asarray(point, dtype=float) - np.asarray(pivot, dtype=float)
+    # Bedrock applies Euler rotations X, then Y, then Z (degrees).
+    for axis, angle in enumerate(rotation):
+        a = np.radians(float(angle)); c, s = np.cos(a), np.sin(a)
+        if axis == 0: m = np.array([[1,0,0],[0,c,-s],[0,s,c]])
+        elif axis == 1: m = np.array([[c,0,s],[0,1,0],[-s,0,c]])
+        else: m = np.array([[c,-s,0],[s,c,0],[0,0,1]])
+        p = m @ p
+    return p + np.asarray(pivot, dtype=float)
+
+
+def bone_chain(geo, bone):
+    by_name = {b.get("name"): b for b in geo.get("bones", [])}
+    chain, cur, seen = [], bone, set()
+    while cur and cur.get("name") not in seen:
+        seen.add(cur.get("name")); chain.append(cur)
+        cur = by_name.get(cur.get("parent"))
+    return chain
+
+
+def world_point(geo, bone, point, cube_rotation=None, cube_pivot=None):
+    p = np.asarray(point, dtype=float)
+    if cube_rotation:
+        p = rotate_point(p, cube_pivot or (np.asarray(point) + 0.0), cube_rotation)
+    for b in bone_chain(geo, bone):
+        pivot = b.get("pivot", [0, 0, 0])
+        p = rotate_point(p, pivot, b.get("rotation", [0, 0, 0]))
+    return p.tolist()
+
+
+def cube_world_center(geo, bone, cube):
+    origin, size = cube["origin"], cube["size"]
+    center = [origin[i] + size[i] / 2 for i in range(3)]
+    return world_point(geo, bone, center, cube.get("rotation"), cube.get("pivot", center))
 
 
 def select_head_cubes(geo, radius=12.0):
@@ -150,7 +183,7 @@ def select_head_cubes(geo, radius=12.0):
     while r <= radius * 2.4:
         picked = []
         for b, c in allc:
-            ctr = cube_world_center(b, c)
+            ctr = cube_world_center(geo, b, c)
             d = sum((ctr[i] - anchor[i]) ** 2 for i in range(3)) ** 0.5
             if d <= r:
                 picked.append((b, c))
@@ -162,17 +195,19 @@ def select_head_cubes(geo, radius=12.0):
 
 # ---------------------------------------------------------------- 渲染
 
-def render(cubes, tex, out_size=32, margin=1):
+def render(cubes, tex, out_size=32, margin=1, geo=None):
     """把方塊群的頭部畫成 out_size 見方 RGBA。"""
     tex = np.asarray(tex.convert("RGBA"), dtype=np.uint8)
     th, tw = tex.shape[:2]
 
     tris = []          # (depth, face, quad3d, u0,v0,u1,v1)
     for bone, cube in cubes:
-        # 方塊座標是相對骨骼 pivot
-        pivot = bone.get("pivot", [0, 0, 0])
-        origin = [cube["origin"][i] + pivot[i] for i in range(3)]
+        # Bedrock cube origins are model-space coordinates. Apply cube rotation
+        # and the bone/ancestor rotations around their declared pivots.
+        origin = cube["origin"]
         size = cube["size"]
+        raw_center = [origin[i] + size[i] / 2 for i in range(3)]
+        cube_pivot = cube.get("pivot", raw_center)
         inflate = cube.get("inflate", 0)
         if inflate:
             origin = [origin[i] - inflate for i in range(3)]
@@ -181,14 +216,24 @@ def render(cubes, tex, out_size=32, margin=1):
         if not uv:
             continue
         rects = per_face_uv(cube) if isinstance(uv, dict) else box_uv_rects(uv, size)
-        for face in VISIBLE:
+        for face in FACE_NORMALS:
             rect = rects.get(face)
             if not rect:
+                continue
+            n = np.asarray(FACE_NORMALS[face], dtype=float)
+            center = np.asarray(origin, dtype=float) + np.asarray(size, dtype=float) / 2
+            normal_tip = center + n
+            if geo:
+                normal_tip = np.asarray(world_point(geo, bone, normal_tip, cube.get("rotation"), cube_pivot))
+                center = np.asarray(world_point(geo, bone, center, cube.get("rotation"), cube_pivot))
+            if np.dot(normal_tip - center, np.asarray([1, 1, 1])) <= 0.02:
                 continue
             u, v, fw, fh = rect
             if fw <= 0 or fh <= 0:
                 continue
             quad = face_quad(origin, size, face)
+            if geo:
+                quad = [world_point(geo, bone, q, cube.get("rotation"), cube_pivot) for q in quad]
             depth = sum(view_depth(p) for p in quad) / 4
             tris.append((depth, face, quad, u, v, u + fw, v + fh))
 
@@ -264,15 +309,43 @@ def load_geometry(path):
     return d
 
 
+def entity_geometries(rp_dir):
+    """Resolve geometry identifiers from client entities, including aliases."""
+    model_root = os.path.join(rp_dir, "models", "entity")
+    geo_files = {}
+    for path in glob.glob(os.path.join(model_root, "**", "*.geo.json"), recursive=True):
+        geo_files[os.path.basename(path).replace(".geo.json", "")] = path
+    found = {}
+    for entity_path in glob.glob(os.path.join(rp_dir, "entity", "*.entity.json")):
+        pid = os.path.basename(entity_path).replace(".entity.json", "")
+        try:
+            d = json.load(open(entity_path, encoding="utf-8"))
+            desc = d["minecraft:client_entity"]["description"]
+            geo_id = desc.get("geometry", {}).get("default", "").replace("geometry.", "")
+            candidates = [geo_id, geo_id.removeprefix("poke_")]
+            if geo_id.endswith("_detailed"):
+                candidates.append(geo_id.removeprefix("poke_").removesuffix("_detailed"))
+            if geo_id.endswith("_male"):
+                candidates.append(geo_id.removesuffix("_male"))
+            candidates.extend({"ho_oh": "hooh", "kommo-o": "kommoo"}.get(x, x) for x in tuple(candidates))
+            candidates.append(pid.removesuffix("_shiny"))
+            path = next((geo_files[x] for x in candidates if x in geo_files), None)
+            if path:
+                found[pid] = path
+        except (OSError, ValueError, KeyError):
+            continue
+    return found
+
+
 def main(rp_dir, preview_path=None):
-    geo_dir = os.path.join(rp_dir, "models", "entity", "cobblemon")
     tex_dir = os.path.join(rp_dir, "textures", "entity", "pokemon")
     out_dir = os.path.join(rp_dir, "textures", "items")
     os.makedirs(out_dir, exist_ok=True)
 
     tiles = []
-    for geo_path in sorted(glob.glob(os.path.join(geo_dir, "*.geo.json"))):
-        pid = os.path.basename(geo_path).replace(".geo.json", "")
+    for pid, geo_path in sorted(entity_geometries(rp_dir).items()):
+        if pid.endswith("_shiny"):
+            continue
         tex_path = os.path.join(tex_dir, f"{pid}.png")
         if not os.path.exists(tex_path):
             print(f"  {pid}: 沒有貼圖，跳過")
@@ -280,13 +353,24 @@ def main(rp_dir, preview_path=None):
         geo = load_geometry(geo_path)
         cubes, how = select_head_cubes(geo)
         if not cubes:
-            print(f"  {pid}: 找不到頭部方塊")
+            # A full-body fallback still provides a species-specific egg crest.
+            cubes = collect_cubes(geo.get("bones", [])[0], bone_tree(geo)[1], []) if geo.get("bones") else []
+            how = "full-model"
+        if not cubes:
+            print(f"  {pid}: 找不到方塊")
             continue
-        img = render(cubes, Image.open(tex_path), out_size=32)
+        img = render(cubes, Image.open(tex_path), out_size=64, geo=geo)
+        if img is not None:
+            img = img.resize((64, 64), Image.Resampling.LANCZOS)
         if img is None:
             print(f"  {pid}: 渲染失敗")
             continue
         img.save(os.path.join(out_dir, f"portrait_{pid}.png"))
+        shiny_tex = os.path.join(tex_dir, f"{pid}_shiny.png")
+        if os.path.exists(shiny_tex):
+            shiny_img = render(cubes, Image.open(shiny_tex), out_size=64, geo=geo)
+            if shiny_img is not None:
+                shiny_img.save(os.path.join(out_dir, f"portrait_{pid}_shiny.png"))
         print(f"  {pid:12s} 方塊={len(cubes):3d} 來源={how}")
         tiles.append((pid, img))
 

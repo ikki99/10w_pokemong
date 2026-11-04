@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""手工打造的高細節阿爾宙斯模型（取代原本只有 9 個方塊的程序生出版本）。
+"""手工打造的高細節阿爾宙斯模型。
 
 設計要點
-- 四足站姿、長頸、灰白面罩、金色十字輪（4 段弧 + 4 根輻條 + 中央綠寶石）、三段尾巴
-- 全部使用 box UV：每個方塊指向一張「純色色塊」，所以不會有接縫錯位，也不需要手畫 UV
-- 貼圖是 512×512 的 8×8 色塊表，每個色塊 64×64
+- 珍珠白的纖長四足身形、灰色條紋腹部、狹長灰面與綠眼紅瞳
+- 頭冠與後掠金角，腹前正面可見的十字金輪和四顆綠寶石
+- 方塊 UV 共用 512×512 調色板貼圖；貼圖加入細微明暗與像素紋理
 - 骨頭命名刻意配合 fix_models_anim 的分類規則：
     body / torso / torso2      → 身
     neck / neck2 / neck3       → 頸（只做微幅點頭）
-    head                       → 頭
+    head / crest / horn_l/r    → 頭、頭冠與後掠金角
+    ring                       → 正面十字金輪
     leg0..leg3                 → 腿（只有上段進動畫，小腿與蹄是子骨頭，跟著父骨頭走）
     tail / tail2 / tail3       → 尾
-    ear_l / ear_r              → 耳
 
 用法：
   python3 tools/gen_arceus_model.py packs/pokemon
@@ -27,21 +27,21 @@ from PIL import Image
 W = H = 512
 CELL = 64
 COLORS = [
-    (0xF4, 0xF2, 0xEC),  # 0 身體白
-    (0xE3, 0xE0, 0xD6),  # 1 腹部淡灰
-    (0x8A, 0x8D, 0x85),  # 2 面罩灰
-    (0x4A, 0x4C, 0x48),  # 3 深灰
-    (0xE8, 0xC5, 0x5C),  # 4 金色
-    (0xB9, 0x92, 0x2F),  # 5 暗金
-    (0x4F, 0xC7, 0x7A),  # 6 綠寶石
-    (0x2F, 0x7A, 0x4A),  # 7 深綠
-    (0xC2, 0x3B, 0x2E),  # 8 紅眼
+    (0xF6, 0xF4, 0xEE),  # 0 珍珠白身體
+    (0xC9, 0xCE, 0xC8),  # 1 腹部淺灰
+    (0x7D, 0x83, 0x7D),  # 2 面罩與腹部深條紋
+    (0x4B, 0x50, 0x4D),  # 3 深灰陰影
+    (0xD6, 0xA2, 0x27),  # 4 飽和金色
+    (0x8F, 0x62, 0x12),  # 5 暗金陰影
+    (0x63, 0xC9, 0x7C),  # 6 綠寶石與眼睛
+    (0x2B, 0x75, 0x4C),  # 7 深綠切面
+    (0xC2, 0x3B, 0x2E),  # 8 暖紅細節
     (0x1A, 0x1A, 0x1A),  # 9 黑
-    (0xF5, 0xE3, 0xA8),  # 10 亮金
-    (0x3A, 0x3A, 0x38),  # 11 蹄
-    (0xFA, 0xF8, 0xF2),  # 12 亮白
-    (0xB8, 0xBB, 0xB2),  # 13 淺灰綠
-    (0x7E, 0x20, 0x18),  # 14 暗紅
+    (0xF4, 0xD4, 0x68),  # 10 亮金高光
+    (0x8F, 0x6B, 0x25),  # 11 金色蹄底
+    (0xFC, 0xFA, 0xF6),  # 12 亮白
+    (0xAE, 0xB5, 0xAF),  # 13 淺灰綠
+    (0x9C, 0x2A, 0x36),  # 14 紅色瞳孔
     (0xFF, 0xFF, 0xFF),  # 15 純白
 ]
 NAMES = {"white": 0, "belly": 1, "mask": 2, "dark": 3, "gold": 4, "goldD": 5,
@@ -98,116 +98,138 @@ class Model:
 
 
 def build():
+    """Arceus Normal form: pearl-white equine body and frontal gold cross-wheel."""
     m = Model()
     C = Model.cube
 
-    # ---------------- 身軀（四足，前 -z） ----------------
-    body = m.bone("body", pivot=(0, 24, 0))
-    C(body, -7, 19, 2, 14, 9, 12, "white")            # 後臀
-    C(body, -8, 20, -8, 16, 9, 11, "white")           # 胸腔
-    C(body, -6.5, 18.5, -3, 13, 3, 12, "belly")       # 腹部淡色
-    C(body, -5, 26.5, -6, 10, 3, 14, "white")         # 背脊隆起
-    C(body, -4, 27, 6, 8, 2, 5, "greyL")              # 臀部灰紋
+    body = m.bone("body", pivot=(0, 22, 0))
+    C(body, -6, 17, -8, 12, 10, 22, "white")
+    C(body, -5.5, 18, 9, 11, 8, 9, "white")
+    C(body, -5, 16, -7, 10, 3, 19, "belly")
+    C(body, -5, 26, -7, 10, 2, 18, "whiteL")
+    C(body, -4.8, 17, 8, 9.6, 7, 6, "whiteL")
+    # The original design has a visibly ribbed gray underside, not one flat belly patch.
+    for i, x in enumerate((-3.6, -1.8, 0, 1.8, 3.6)):
+        C(body, x - 0.55, 16.5, -5.5, 1.1, 4.5, 2.2 + (i % 2), "mask")
+        C(body, x - 0.45, 16.8, 1.5, 0.9, 4.1, 2.4, "greyL")
 
-    torso = m.bone("torso", parent="body", pivot=(0, 24, -6))
-    C(torso, -6, 21, -12, 12, 6, 5, "white")          # 肩部
-    C(torso, -3, 20, -13.5, 6, 4, 2, "belly")         # 胸口淡色
-    torso2 = m.bone("torso2", parent="torso", pivot=(0, 27, -8))
-    C(torso2, -4.5, 27, -11, 9, 4, 4, "white")
+    torso = m.bone("torso", parent="body", pivot=(0, 22, -7))
+    C(torso, -5.5, 20, -15, 11, 8, 12, "white")
+    C(torso, -4.5, 17.5, -14, 9, 3, 9, "belly")
+    C(torso, -4.2, 19, -16, 8.4, 3, 2, "whiteL")
+    torso2 = m.bone("torso2", parent="torso", pivot=(0, 25, -10))
+    C(torso2, -4.4, 23, -18, 8.8, 7, 9, "white")
+    C(torso2, -3.7, 22, -19, 7.4, 2.4, 2, "belly")
+    for x in (-2.5, -0.8, 0.8, 2.5):
+        C(torso2, x - 0.4, 20.5, -19.2, 0.8, 3.5, 1, "mask")
 
-    # ---------------- 脖子（往上往前） ----------------
-    n1 = m.bone("neck", parent="torso2", pivot=(0, 28, -9))
-    C(n1, -3.5, 28, -12, 7, 6, 6, "white")
-    C(n1, -4.5, 30, -6, 9, 3, 5, "greyL")             # 頸後的灰色鬃毛
-    n2 = m.bone("neck2", parent="neck", pivot=(0, 34, -10))
-    C(n2, -3, 34, -13, 6, 5, 5, "white")
-    C(n2, -4, 36, -8, 8, 2.5, 4, "greyL")
-    n3 = m.bone("neck3", parent="neck2", pivot=(0, 39, -11))
-    C(n3, -2.5, 39, -14, 5, 4, 5, "white")
-    C(n3, -3.5, 41, -9, 7, 2, 4, "mask")
+    neck = m.bone("neck", parent="torso2", pivot=(0, 28, -15))
+    C(neck, -3.4, 27, -20, 6.8, 9, 7, "white")
+    C(neck, -3.5, 28, -21, 7, 4, 2, "whiteL")
+    neck2 = m.bone("neck2", parent="neck", pivot=(0, 35, -18))
+    C(neck2, -2.8, 34, -24, 5.6, 8, 7, "white")
+    C(neck2, -3, 35, -25, 6, 4.8, 2, "belly")
+    for x in (-1.8, 0, 1.8):
+        C(neck2, x - 0.45, 31.5, -25.3, 0.9, 4.8, 0.8, "mask")
+    neck3 = m.bone("neck3", parent="neck2", pivot=(0, 41, -22))
+    C(neck3, -2.4, 40, -28, 4.8, 6, 7, "white")
+    C(neck3, -2.8, 41, -29, 5.6, 2.4, 2, "mask")
 
-    # ---------------- 頭 ----------------
-    head = m.bone("head", parent="neck3", pivot=(0, 43, -11.5))
-    C(head, -4, 43, -16, 8, 5, 9, "white")            # 顱
-    C(head, -3, 43, -21, 6, 3.5, 6, "white")          # 吻部
-    C(head, -2.5, 42.2, -20, 5, 1.5, 5, "mask")       # 下顎
-    C(head, -4.2, 44, -15, 0.8, 3.5, 6, "mask")       # 左頰面罩
-    C(head, 3.4, 44, -15, 0.8, 3.5, 6, "mask")        # 右頰面罩
-    C(head, -2.6, 46.2, -19.4, 2, 1.6, 1.2, "eye")    # 左眼
-    C(head, 0.6, 46.2, -19.4, 2, 1.6, 1.2, "eye")     # 右眼
-    C(head, -2, 46.4, -19.9, 0.8, 0.9, 0.4, "eyeD")   # 左瞳
-    C(head, 1.2, 46.4, -19.9, 0.8, 0.9, 0.4, "eyeD")  # 右瞳
-    C(head, -1.2, 44.4, -21.6, 2.4, 1.2, 1, "gold")   # 鼻樑金飾
-    C(head, -1, 47.6, -12, 2, 1.6, 6, "goldL")        # 頭頂金色脊冠
+    head = m.bone("head", parent="neck3", pivot=(0, 44, -25))
+    # Horse-like skull and tapered muzzle, with the familiar slate-gray face.
+    C(head, -3.2, 42.5, -32, 6.4, 6.2, 8, "white")
+    C(head, -2.4, 42, -38, 4.8, 3.7, 8, "whiteL")
+    C(head, -2.15, 42.8, -39, 4.3, 1.6, 5.6, "mask")
+    C(head, -3.25, 44, -34, 6.5, 2.6, 4.4, "mask")
+    # Green eyes with restrained red pupils; no gold band across the muzzle.
+    for x in (-2.25, 1.25):
+        C(head, x, 45.3, -36.3, 1.4, 1.6, 0.8, "jewel")
+        C(head, x + 0.45, 45.6, -37.0, 0.55, 0.9, 0.35, "eyeD")
+        C(head, x - 0.3, 46.55, -36.9, 0.45, 0.35, 0.3, "pure")
+    C(head, -0.9, 45.2, -39.4, 1.8, 0.9, 0.7, "dark")
 
-    ear_l = m.bone("ear_l", parent="head", pivot=(-3.4, 47, -12))
-    C(ear_l, -5.4, 47, -13, 2, 5, 2.5, "gold", rotation=[0, 0, 18], pivot=[-4.4, 47, -12])
-    C(ear_l, -6.2, 50.5, -13.4, 1.6, 2, 1.8, "goldL", rotation=[0, 0, 18], pivot=[-4.4, 47, -12])
-    ear_r = m.bone("ear_r", parent="head", pivot=(3.4, 47, -12))
-    C(ear_r, 3.4, 47, -13, 2, 5, 2.5, "gold", rotation=[0, 0, -18], pivot=[4.4, 47, -12])
-    C(ear_r, 4.6, 50.5, -13.4, 1.6, 2, 1.8, "goldL", rotation=[0, 0, -18], pivot=[4.4, 47, -12])
+    # A narrow crown sweep sits behind the brow instead of two rabbit-like prongs.
+    crest = m.bone("crest", parent="head", pivot=(0, 47, -29))
+    C(crest, -1.5, 46, -29, 3, 3.2, 3, "goldD")
+    C(crest, -1.2, 48, -27, 2.4, 4.5, 3, "gold")
+    C(crest, -0.85, 51, -24.8, 1.7, 4.2, 2.6, "goldL")
+    C(crest, -0.5, 54, -22.8, 1, 3, 2, "gold")
+    C(crest, -0.3, 56, -21.4, 0.6, 1.5, 1.5, "goldL")
 
-    # ---------------- 金色十字輪（環面在 YZ 平面，側面看才是一整個圓） ----------------
-    ring = m.bone("ring", parent="body", pivot=(0, 25, 0))
-    R = 17.0
-    for k in range(32):                                  # 環體：32 顆小方塊圍成一圈
-        a = 2 * math.pi * k / 32
-        py, pz = R * math.sin(a), R * math.cos(a)
-        C(ring, -2.3, 25 + py - 2.3, pz - 2.3, 4.6, 4.6, 4.6, "gold" if k % 2 == 0 else "goldD")
-    for base in (45, 135, 225, 315):                     # 四根斜輻條
-        a = math.radians(base)
-        for k in range(1, 5):
-            r = R * k / 5.0
-            C(ring, -1.2, 25 + r * math.sin(a) - 1.2, r * math.cos(a) - 1.2, 2.4, 2.4, 2.4, "goldL")
-    for sx in (-1, 1):                                   # 左右兩側的十字圓盤 + 綠寶石
-        C(ring, sx * 8.2 - 0.6 if sx < 0 else 7.6, 21.5, -3, 1.6, 7, 6, "goldD")
-        C(ring, sx * 8.4 - 0.5 if sx < 0 else 7.9, 20.5, -4, 1.2, 9, 8, "gold")
-        gem_x = -9.4 if sx < 0 else 8.2
-        C(ring, gem_x, 22.4, -2.4, 1.4, 5.2, 4.8, "jewel")
-        C(ring, gem_x - 0.3 if sx < 0 else gem_x + 1.1, 23.6, -1.2, 0.6, 2.8, 2.4, "jewelD")
+    horn_l = m.bone("horn_l", parent="head", pivot=(-3.1, 46, -28))
+    C(horn_l, -4.5, 44, -29, 2.2, 4.8, 3, "goldD", rotation=[24, 0, -18], pivot=[-3.5, 46, -27])
+    C(horn_l, -5.3, 47, -26, 1.8, 3.6, 2.4, "gold", rotation=[28, 0, -24], pivot=[-3.5, 46, -27])
+    C(horn_l, -5.6, 49, -24, 1.2, 2, 1.8, "goldL", rotation=[32, 0, -24], pivot=[-3.5, 46, -27])
+    horn_r = m.bone("horn_r", parent="head", pivot=(3.1, 46, -28))
+    C(horn_r, 2.3, 44, -29, 2.2, 4.8, 3, "goldD", rotation=[24, 0, 18], pivot=[3.5, 46, -27])
+    C(horn_r, 3.5, 47, -26, 1.8, 3.6, 2.4, "gold", rotation=[28, 0, 24], pivot=[3.5, 46, -27])
+    C(horn_r, 4.1, 49, -24, 1.2, 2, 1.8, "goldL", rotation=[32, 0, 24], pivot=[3.5, 46, -27])
 
-    # ---------------- 四條腿（只有上段進動畫） ----------------
-    legs = [("leg0", -7, -9), ("leg1", 7, -9), ("leg2", -7, 9), ("leg3", 7, 9)]
-    for name, x, z in legs:
-        upper = m.bone(name, parent="body", pivot=(x, 21, z))
-        C(upper, x - 3.5, 12, z - 3.5, 7, 10, 7, "white")
-        C(upper, x - 3.9, 18, z - 3.9, 7.8, 2.5, 7.8, "belly")     # 大腿灰色環
-        lower = m.bone(name + "_lower", parent=name, pivot=(x, 12, z))
-        C(lower, x - 2.6, 5, z - 2.6, 5.2, 7, 5.2, "white")
-        C(lower, x - 2.8, 8.5, z - 2.8, 5.6, 1.6, 5.6, "greyL")
-        hoof = m.bone(name + "_hoof", parent=name + "_lower", pivot=(x, 5, z))
-        C(hoof, x - 3, 0, z - 3.6, 6, 5, 7.2, "white")
-        C(hoof, x - 3.2, 0, z - 3.8, 6.4, 1.6, 7.6, "hoof")       # 蹄底
-        C(hoof, x - 1.2, 1.4, z - 4.2, 2.4, 2.2, 1, "gold")       # 前蹄金飾
+    # The signature wheel is a face-on cross with four green gems, not an edge-on yellow loop.
+    # One raised cross-wheel sits on the front of the body, matching Arceus's single halo.
+    ring = m.bone("ring", parent="body", pivot=(0, 22, -1))
+    center_y, radius, segments = 22, 14, 28
+    for layer_index, layer_z in enumerate((-16.2,)):
+        for quadrant in range(4):
+            arc = m.bone(f"wheel_rim_{layer_index}_{quadrant}", parent="ring",
+                         pivot=(0, center_y, layer_z), rotation=(0, 0, quadrant * 90))
+            for j in range(7):
+                angle_deg = -45 + j * 15
+                angle = math.radians(angle_deg)
+                cx, cy = radius * math.cos(angle), center_y + radius * math.sin(angle)
+                C(arc, cx - 1.25, cy - 1.8, layer_z - 1.3, 2.5, 3.6, 2.6,
+                  "goldL" if j in (0, 6) else ("goldD" if j % 2 else "gold"),
+                  rotation=[0, 0, angle_deg], pivot=[cx, cy, layer_z])
+        # A true plus-shaped cross joins the four settings across the open wheel.
+        C(ring, -12, center_y - 1.65, layer_z - 1.3, 24, 3.3, 2.6, "gold")
+        C(ring, -1.65, center_y - 12, layer_z - 1.3, 3.3, 24, 2.6, "goldL")
+        for gx, gy in ((10.5, center_y), (-10.5, center_y), (0, center_y + 10.5), (0, center_y - 10.5)):
+            C(ring, gx - 2.55, gy - 2.55, layer_z - 1.75, 5.1, 5.1, 3.5, "goldD")
+            C(ring, gx - 1.8, gy - 1.8, layer_z - 1.95, 3.6, 3.6, 3.9, "jewel")
+            C(ring, gx - 1.25, gy + 0.2, layer_z - 2.1, 0.9, 0.8, 0.35, "pure")
 
-    # ---------------- 尾巴 ----------------
-    t1 = m.bone("tail", parent="body", pivot=(0, 25, 13))
-    C(t1, -2.5, 23, 13, 5, 5, 6, "white", rotation=[-18, 0, 0], pivot=[0, 25, 13])
-    t2 = m.bone("tail2", parent="tail", pivot=(0, 26, 18))
-    C(t2, -2, 25, 18, 4, 4, 5, "white", rotation=[-28, 0, 0], pivot=[0, 26, 18])
-    t3 = m.bone("tail3", parent="tail2", pivot=(0, 28, 23))
-    C(t3, -2.6, 27, 23, 5.2, 5.2, 4, "greyL", rotation=[-34, 0, 0], pivot=[0, 28, 23])
-    C(t3, -1.4, 31, 24, 2.8, 3, 2.4, "gold", rotation=[-34, 0, 0], pivot=[0, 28, 23])
+    for name, x, z in (("leg0", -5.8, -9), ("leg1", 5.8, -9), ("leg2", -5.8, 9), ("leg3", 5.8, 9)):
+        upper = m.bone(name, parent="body", pivot=(x, 19, z))
+        C(upper, x - 1.7, 10, z - 2.2, 3.4, 10, 4.4, "white")
+        C(upper, x - 2.1, 17, z - 2.5, 4.2, 2.2, 5, "whiteL")
+        lower = m.bone(name + "_lower", parent=name, pivot=(x, 10, z))
+        C(lower, x - 1.2, 3, z - 1.7, 2.4, 8, 3.4, "white")
+        C(lower, x - 1.35, 7, z - 1.9, 2.7, 1.4, 3.8, "mask")
+        hoof = m.bone(name + "_hoof", parent=name + "_lower", pivot=(x, 3, z))
+        C(hoof, x - 1.75, 0, z - 2.5, 3.5, 3.2, 5, "gold")
+        C(hoof, x - 1.85, 0, z - 2.7, 3.7, 1.2, 5.4, "goldD")
+        C(hoof, x - 1.1, 2, z - 2.9, 2.2, 0.65, 0.4, "goldL")
+
+    tail = m.bone("tail", parent="body", pivot=(0, 23, 14))
+    C(tail, -1.6, 21, 14, 3.2, 3.2, 7, "white", rotation=[-12, 0, 0], pivot=[0, 23, 14])
+    C(tail, -2.1, 22.5, 19, 4.2, 2, 6, "whiteL")
+    tail2 = m.bone("tail2", parent="tail", pivot=(0, 23, 20))
+    C(tail2, -1.1, 21.5, 20, 2.2, 2.5, 7, "white", rotation=[-18, 0, 0], pivot=[0, 23, 20])
+    tail3 = m.bone("tail3", parent="tail2", pivot=(0, 24, 27))
+    C(tail3, -1.5, 23, 27, 3, 3.5, 5, "whiteL", rotation=[-22, 0, 0], pivot=[0, 24, 27])
+    C(tail3, -0.7, 26, 30, 1.4, 2, 2, "gold")
     return m
-
-
 def make_texture(path, shiny=False):
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     px = img.load()
     for i, (r, g, b) in enumerate(COLORS):
-        if shiny:                      # 異色：白 → 淡金、金 → 銀、綠寶石 → 藍
+        if shiny:                      # 異色：身體轉為奶金色，保留金輪與綠寶石識別
             if i in (0, 12, 15):
-                r, g, b = 0xFA, 0xF3, 0xD8
+                r, g, b = 0xF1, 0xD8, 0x91
+            elif i == 1:
+                r, g, b = 0xC9, 0xB7, 0x79
+            elif i in (2, 13):
+                r, g, b = 0x8B, 0x7C, 0x62
             elif i in (4, 10):
-                r, g, b = 0xD6, 0xDC, 0xE6
-            elif i in (5,):
-                r, g, b = 0x98, 0xA2, 0xB4
-            elif i in (6, 7):
-                r, g, b = (0x5A, 0xA8, 0xE8) if i == 6 else (0x2A, 0x5A, 0x8C)
+                r, g, b = 0xD5, 0x9C, 0x2F
+            elif i == 5:
+                r, g, b = 0x86, 0x55, 0x16
         x0, y0 = (i % 8) * CELL, (i // 8) * CELL
-        for y in range(y0, y0 + CELL):
-            for x in range(x0, x0 + CELL):
-                px[x, y] = (r, g, b, 255)
+        for y in range(CELL):
+            for x in range(CELL):
+                shade = 1.08 - 0.16 * (y / (CELL - 1))
+                shade += 0.035 * (1 - x / (CELL - 1))
+                px[x0 + x, y0 + y] = tuple(max(0, min(255, int(c * shade))) for c in (r, g, b)) + (255,)
     img.save(path)
 
 
@@ -240,8 +262,83 @@ def main(pack_dir, shiny=False):
             desc = d["minecraft:client_entity"]["description"]
             desc["geometry"] = {"default": "geometry.poke_arceus_detailed"}
             desc["textures"] = {"default": f"textures/entity/pokemon/{pid}"}
+            desc["animations"] = {
+                "idle": "animation.poke_arceus.idle",
+                "walk": "animation.poke_arceus.walk",
+                "fly": "animation.poke_arceus.fly",
+                "attack": "animation.poke_arceus.attack",
+            }
+            desc["scripts"] = {"animate": [
+                {"idle": "query.modified_move_speed <= 0.05"},
+                {"walk": "query.modified_move_speed > 0.05 && query.is_on_ground"},
+                {"fly": "query.modified_move_speed > 0.05 && !query.is_on_ground"},
+                {"attack": "query.property('poke:attack')"},
+            ]}
             json.dump(d, open(p, "w", encoding="utf-8"), separators=(",", ":"), ensure_ascii=False)
             print("已綁定:", p)
+
+    animations = {"format_version": "1.8.0", "animations": {
+        "animation.poke_arceus.idle": {
+            "loop": True, "animation_length": 3.0,
+            "bones": {
+                "body": {"position": {"0.0": [0, 0, 0], "1.5": [0, 0.35, 0], "3.0": [0, 0, 0]},
+                         "rotation": {"0.0": [0, 0, 0], "1.5": [1, 0, 0], "3.0": [0, 0, 0]}},
+                "torso": {"rotation": {"0.0": [0, 0, 0], "1.5": [-1.5, 0, 0], "3.0": [0, 0, 0]}},
+                "head": {"rotation": {"0.0": [0, 0, 0], "0.8": [2, 5, 0], "1.7": [0, -6, 0], "3.0": [0, 0, 0]}},
+                "neck": {"rotation": {"0.0": [0, 0, 0], "1.5": [1.5, 0, 0], "3.0": [0, 0, 0]}},
+                "ring": {"rotation": {"0.0": [0, 0, 0], "1.5": [0, 0, 5], "3.0": [0, 0, 0]}},
+                "tail": {"rotation": {"0.0": [0, 8, 0], "1.5": [0, -8, 0], "3.0": [0, 8, 0]}},
+                "tail2": {"rotation": {"0.0": [0, 5, 0], "1.5": [0, -5, 0], "3.0": [0, 5, 0]}},
+                "tail3": {"rotation": {"0.0": [0, 3, 0], "1.5": [0, -3, 0], "3.0": [0, 3, 0]}},
+            },
+        },
+        "animation.poke_arceus.walk": {
+            "loop": True, "animation_length": 0.9,
+            "bones": {
+                "leg0": {"rotation": {"0.0": [24, 0, 0], "0.45": [-24, 0, 0], "0.9": [24, 0, 0]}},
+                "leg1": {"rotation": {"0.0": [-24, 0, 0], "0.45": [24, 0, 0], "0.9": [-24, 0, 0]}},
+                "leg2": {"rotation": {"0.0": [-24, 0, 0], "0.45": [24, 0, 0], "0.9": [-24, 0, 0]}},
+                "leg3": {"rotation": {"0.0": [24, 0, 0], "0.45": [-24, 0, 0], "0.9": [24, 0, 0]}},
+                "body": {"position": {"0.0": [0, 0, 0], "0.225": [0, 0.7, 0], "0.45": [0, 0, 0], "0.675": [0, 0.7, 0], "0.9": [0, 0, 0]}},
+                "head": {"rotation": {"0.0": [-2, 0, 0], "0.45": [3, 0, 0], "0.9": [-2, 0, 0]}},
+                "ring": {"rotation": {"0.0": [0, 0, -3], "0.45": [0, 0, 3], "0.9": [0, 0, -3]}},
+                "tail": {"rotation": {"0.0": [0, 12, 0], "0.45": [0, -12, 0], "0.9": [0, 12, 0]}},
+                "tail2": {"rotation": {"0.0": [0, 8, 0], "0.45": [0, -8, 0], "0.9": [0, 8, 0]}},
+            },
+        },
+        "animation.poke_arceus.fly": {
+            "loop": True, "animation_length": 1.6,
+            "bones": {
+                "body": {"position": {"0.0": [0, 0, 0], "0.8": [0, 2.0, 0], "1.6": [0, 0, 0]},
+                         "rotation": {"0.0": [-3, 0, 0], "0.8": [3, 0, 0], "1.6": [-3, 0, 0]}},
+                "torso": {"rotation": {"0.0": [2, 0, 0], "0.8": [-2, 0, 0], "1.6": [2, 0, 0]}},
+                "leg0": {"rotation": [ -28, 0, 0 ]}, "leg1": {"rotation": [ -28, 0, 0 ]},
+                "leg2": {"rotation": [ -22, 0, 0 ]}, "leg3": {"rotation": [ -22, 0, 0 ]},
+                "ring": {"rotation": {"0.0": [0, 0, -8], "0.8": [0, 0, 8], "1.6": [0, 0, -8]}},
+                "tail": {"rotation": {"0.0": [0, 10, 0], "0.8": [0, -10, 0], "1.6": [0, 10, 0]}},
+                "tail2": {"rotation": {"0.0": [0, 7, 0], "0.8": [0, -7, 0], "1.6": [0, 7, 0]}},
+                "tail3": {"rotation": {"0.0": [0, 4, 0], "0.8": [0, -4, 0], "1.6": [0, 4, 0]}},
+                "head": {"rotation": {"0.0": [1, 0, 0], "0.8": [-2, 0, 0], "1.6": [1, 0, 0]}},
+            },
+        },
+        "animation.poke_arceus.attack": {
+            "animation_length": 0.7,
+            "bones": {
+                "body": {"position": {"0.0": [0, 0, 0], "0.18": [0, 0, -1], "0.34": [0, 0, 1.5], "0.7": [0, 0, 0]},
+                         "rotation": {"0.0": [0, 0, 0], "0.18": [-8, 0, 0], "0.34": [16, 0, 0], "0.7": [0, 0, 0]}},
+                "head": {"rotation": {"0.0": [0, 0, 0], "0.18": [-5, 0, 0], "0.34": [20, 0, 0], "0.7": [0, 0, 0]}},
+                "leg0": {"rotation": {"0.0": [0, 0, 0], "0.18": [-20, 0, 0], "0.34": [32, 0, 0], "0.7": [0, 0, 0]}},
+                "leg1": {"rotation": {"0.0": [0, 0, 0], "0.18": [-20, 0, 0], "0.34": [32, 0, 0], "0.7": [0, 0, 0]}},
+                "ring": {"rotation": {"0.0": [0, 0, 0], "0.18": [0, 0, -18], "0.34": [0, 0, 32], "0.7": [0, 0, 0]}},
+                "tail": {"rotation": {"0.0": [0, 0, 0], "0.34": [0, -18, 0], "0.7": [0, 0, 0]}},
+                "tail2": {"rotation": {"0.0": [0, 0, 0], "0.34": [0, -12, 0], "0.7": [0, 0, 0]}},
+            },
+        },
+    }}
+    anim_path = os.path.join(rp, "animations", "arceus.animations.json")
+    os.makedirs(os.path.dirname(anim_path), exist_ok=True)
+    with open(anim_path, "w", encoding="utf-8") as f:
+        json.dump(animations, f, ensure_ascii=False, separators=(",", ":"))
 
 
 if __name__ == "__main__":
