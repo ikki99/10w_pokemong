@@ -5,7 +5,7 @@ import { ActionFormData } from "@minecraft/server-ui";
 import "./worlds.js";  // 主題世界：傳送廣場 + 區域生成
 
 const TAG = "[Poke]";
-const VERSION = "4.9.0";
+const VERSION = "5.0.32";
 console.log(`${TAG} module loaded (v${VERSION})`);
 
 // ============================================================ 屬性
@@ -750,53 +750,77 @@ system.runInterval(() => {
 
 // ============================================================ 圖鑑面板
 
-function showDex(player) {
+function showDex(player, page, deferred) {
+  // 一律延到下一 tick 才開表單：從事件回呼直接 show() 會讓圖示貼圖載入失敗
+  if (!deferred) {
+    system.run(() => { try { showDex(player, page, true); } catch (e) {} });
+    return;
+  }
   const d = readDex();
   const caught = BASE_IDS.filter((id) => (d[id] ?? 0) > 0).length;
   let partner = "(無)";
   try { partner = player.getDynamicProperty("poke:partner") ?? "(無)"; } catch (e) {}
 
-  const lines = [`§6寶可夢圖鑑  §f${caught}/${TOTAL_SPECIES}`, `§7夥伴：§f${NAME_ZH[partner] ?? partner}`];
-  for (const id of BASE_IDS) {
-    const n = d[id] ?? 0;
-    const shiny = (d[`${id}${SHINY_SUFFIX}`] ?? 0) > 0 ? " §d✦" : "";
-    lines.push(`${n > 0 ? "§a✔" : "§8✘"} §f${NAME_ZH[id] ?? id} §7${n > 0 ? `x${n}` : "未捕獲"}${shiny}`);
-  }
-  try { player.sendMessage(lines.join("\n")); } catch (e) {}
+  // 聊天欄只留一行摘要（之前一次噴 59 行，會讓後面的表單圖示載入失敗）
+  try {
+    player.sendMessage(`§6寶可夢圖鑑 §f${caught}/${TOTAL_SPECIES} §7已捕獲　夥伴：§f${NAME_ZH[partner] ?? partner}`);
+  } catch (e) {}
 
-  // 圖示路徑：資源包 rp/textures/ui/dex_<id>.png（無副檔名）
-  const dexIcon = (id) => `textures/ui/dex_${id}`;
+  const dexIcon = (id) => `textures/items/dex_${String(id).replace(/^poke:/, "")}`;
+
+  const PAGE = 999;
+  const pages = Math.max(1, Math.ceil(BASE_IDS.length / PAGE));
+  const p = Math.max(0, Math.min(Number(page) || 0, pages - 1));
+  const slice = BASE_IDS.slice(p * PAGE, p * PAGE + PAGE);
 
   try {
     const form = new ActionFormData()
-      .title("寶可夢圖鑑")
+      .title(pages > 1 ? `寶可夢圖鑑 ${p + 1}/${pages}` : "寶可夢圖鑑")
       .body(`已捕獲 ${caught}/${TOTAL_SPECIES}　§7（✦＝異色）\n夥伴：${NAME_ZH[partner] ?? partner}`);
     form.button("召喚夥伴", "textures/items/pokeball");
     form.button("收回夥伴", "textures/items/greatball");
-    for (const id of BASE_IDS) {
+    const dbg = [];
+    for (const id of slice) {
       const n = d[id] ?? 0;
       const sh = (d[`${id}${SHINY_SUFFIX}`] ?? 0) > 0;
       const label = `${n > 0 ? "✔" : "✘"} ${NAME_ZH[id] ?? id}${n > 0 ? ` x${n}` : ""}${sh ? " ✦" : ""}`;
-      form.button(label, dexIcon(sh ? `${id}${SHINY_SUFFIX}` : id));
+      const iconPath = dexIcon(sh ? `${id}${SHINY_SUFFIX}` : id);
+      dbg.push(`${id}=${n}${sh ? "(shiny)" : ""} -> ${iconPath}`);
+      form.button(label, iconPath);
     }
-    const order = BASE_IDS;
+    console.log(`${TAG} 圖鑑第${p + 1}頁 icons: ${dbg.join(" | ")}`);
+    console.log(`${TAG} 圖鑑 title=寶可夢圖鑑 ${p + 1}/${pages} body=已捕獲 ${caught}/${TOTAL_SPECIES} SHINY_SUFFIX=${SHINY_SUFFIX}`);
+    const navStart = 2 + slice.length;
+    if (p > 0) form.button("◀ 上一頁");
+    if (p < pages - 1) form.button("下一頁 ▶");
+
     form.show(player).then((res) => {
       if (res.canceled) return;
-      if (res.selection === 0) { summonPartner(player); return; }
-      if (res.selection === 1) { recallPartner(player); return; }
-      const picked = order[res.selection - 2];
-      if (!picked) return;
-      if (!(readDex()[picked] > 0)) {
-        player.sendMessage(`§7你還沒抓過 ${NAME_ZH[picked] ?? picked}。`);
+      const sel = res.selection;
+      if (sel === 0) { summonPartner(player); return; }
+      if (sel === 1) { recallPartner(player); return; }
+      if (sel >= 2 && sel < navStart) {
+        const picked = slice[sel - 2];
+        if (!picked) return;
+        if (!(readDex()[picked] > 0)) {
+          player.sendMessage(`§7你還沒抓過 ${NAME_ZH[picked] ?? picked}。`);
+          return;
+        }
+        try { player.setDynamicProperty("poke:partner", picked); } catch (e) {}
+        summonPartner(player);
         return;
       }
-      try { player.setDynamicProperty("poke:partner", picked); } catch (e) {}
-      summonPartner(player);
+      let idx = sel - navStart;
+      if (p > 0) {
+        if (idx === 0) { showDex(player, p - 1); return; }
+        idx -= 1;
+      }
+      if (p < pages - 1 && idx === 0) { showDex(player, p + 1); return; }
     }).catch((err) => {
-      console.log(`${TAG} form.show 失敗: ${err}`);
+      try { player.sendMessage(`${TAG} 圖鑑面板打不開：${err}`); } catch (e2) {}
     });
   } catch (e) {
-    console.log(`${TAG} server-ui 面板失敗（聊天欄已顯示）: ${e}`);
+    try { player.sendMessage(`${TAG} 圖鑑面板失敗：${e}`); } catch (e2) {}
   }
 }
 
@@ -970,6 +994,40 @@ world.afterEvents.entityHurt.subscribe((ev) => {
     }
   } catch (e) {}
 });
+
+// 尾巴火焰：腳本直接在世界座標發粒子（不吃 RP 動畫與 locator，最保險）
+let tailFlameLogged = 0;
+const TAIL_FLAME_TYPES = { "poke:charmander": { d: 0.62, h: 0.78 }, "poke:charizard": { d: 0.80, h: 1.15 } };
+system.runInterval(() => {
+  for (const player of world.getAllPlayers()) {
+    for (const typeId of Object.keys(TAIL_FLAME_TYPES)) {
+      let ents = [];
+      try {
+        ents = player.dimension.getEntities({ type: typeId, location: player.location, maxDistance: 40 });
+      } catch (e) {
+        continue;
+      }
+      for (const e of ents) {
+        try {
+          if (tailFlameLogged < 3) { tailFlameLogged++; console.log(`${TAG} 尾巴火焰：${typeId} @ ${e.location.x.toFixed(1)},${e.location.y.toFixed(1)},${e.location.z.toFixed(1)}`); }
+          const dir = e.getViewDirection();
+          const cfg = TAIL_FLAME_TYPES[typeId];
+          const tail = {
+            x: e.location.x - dir.x * cfg.d,
+            y: e.location.y + cfg.h,
+            z: e.location.z - dir.z * cfg.d,
+          };
+          player.dimension.spawnParticle("minecraft:basic_flame_particle", tail);
+          if (Math.random() < 0.5) {
+            player.dimension.spawnParticle("minecraft:basic_smoke_particle", {
+              x: tail.x, y: tail.y + 0.25, z: tail.z,
+            });
+          }
+        } catch (e2) {}
+      }
+    }
+  }
+}, 6);
 
 // 巡邏：每 20 tick 掃一次玩者周圍 12 格的敵對生物，夥伴主動出擊
 system.runInterval(() => {
@@ -1248,11 +1306,7 @@ function say(target, msg) {
   console.log(msg);
 }
 
-system.afterEvents.scriptEventReceive.subscribe((ev) => {
-  if (!ev.id.startsWith("poke:")) return;
-  const sub = ev.id.slice(5);
-  const src = ev.sourceEntity;
-  const dim = world.getDimension("overworld");
+function handlePokeSub(sub, src) {  const dim = world.getDimension("overworld");
   const base = src && src.location ? src.location : { x: 0, y: 100, z: 0 };
 
   if (sub === "help") {
@@ -1261,6 +1315,7 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
       " §f/scriptevent poke:list §7列出寶可夢與招式",
       " §f/scriptevent poke:catch §7對最近 20 格的寶可夢丟球（自己執行）",
       " §f/scriptevent poke:partner §7召喚夥伴",
+      " §f!dex / !dexprobe / !flametest / !icontest §7聊天版指令（不需權限）",
       " §f/scriptevent poke:recall §7收回夥伴",
       " §f/scriptevent poke:dex §7顯示圖鑑",
       " §f/scriptevent poke:dex_reset §7清空圖鑑",
@@ -1290,6 +1345,82 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
         say(src, `§c✘ ${id} 不存在（${e}）`);
       }
     }
+    return;
+  }
+
+  if (sub === "icontest") {
+    const f = new ActionFormData().title("圖示測試").body("哪幾個按鈕左邊有圖？記下字母告訴我。");
+    f.button("A 香草 compass（應該有）", "textures/items/compass");
+    f.button("B pokeball 16 調色盤（已知可以）", "textures/items/pokeball");
+    f.button("C dex 128 無副檔名", "textures/items/dex_charizard");
+    f.button("H flame16 16 調色盤", "textures/items/flame16_charizard");
+    f.button("I flame32 32 調色盤", "textures/items/flame32_charizard");
+    f.button("J flame64p 64 調色盤", "textures/items/flame64p_charizard");
+    f.button("K flame64rgba 64 RGBA", "textures/items/flame64rgba_charizard");
+    f.button("F portrait 64", "textures/items/portrait_charizard");
+    f.button("D dex 128 帶 .png（對照）", "textures/items/dex_charizard.png");
+    f.button("E ui 目錄 96 帶 .png（對照）", "textures/ui/dex_charizard.png");
+    f.button("G 故意錯路徑（對照，應該缺圖）", "textures/items/definitely_not_here");
+    f.show(src).catch((e) => say(src, `${TAG} icontest 失敗: ${e}`));
+    return;
+  }
+
+  if (sub === "flametest") {
+    const loc = src.location;
+    const dim = src.dimension;
+    let vd = { x: 0, z: 1 };
+    try { vd = src.getViewDirection(); } catch (e) {}
+    const rx = -vd.z, rz = vd.x;
+    const bx = loc.x + vd.x * 3, bz = loc.z + vd.z * 3, by = loc.y + 1.2;
+    const at = (k) => ({ x: bx + rx * k, y: by, z: bz + rz * k });
+    const names = ["minecraft:basic_flame_particle", "minecraft:basic_smoke_particle", "poke:tail_flame"];
+    const labels = ["自帶火焰", "自帶煙", "我們的火焰"];
+    const ok = [];
+    names.forEach((n, i) => {
+      try { dim.spawnParticle(n, at(i * 1.2 - 1.2)); ok.push(`${labels[i]}=已發`); }
+      catch (e) { ok.push(`${labels[i]}=失敗`); }
+    });
+    say(src, `§a前方三格，由左到右：${labels.join(" / ")}\n§7${ok.join("　")}`);
+    console.log(`${TAG} flametest by ${src.name}: ${ok.join(" | ")}`);
+    return;
+  }
+
+  if (sub === "chain") {
+    const paths = [
+      "textures/items/dex_pikachu", "textures/items/dex_eevee", "textures/items/dex_bulbasaur",
+      "textures/items/dex_charmander", "textures/items/dex_squirtle", "textures/items/dex_jigglypuff",
+    ];
+    const withSec = "已捕獲 4/57　§7（✦＝異色）\n夥伴：(無)";
+    const showNext = (n) => {
+      if (n > 4) { say(src, "§a四個都看完了，告訴我哪幾個有圖。"); return; }
+      const f = new ActionFormData();
+      if (n === 2) { f.title("第2個：body 含顏色碼").body(withSec); }
+      else if (n === 3) { f.title("寶可夢圖鑑 1/10").body("已捕獲 4/57"); }
+      else if (n === 4) { f.title("第4個：前面多兩顆球").body("普通 body"); }
+      else { f.title("第1個：乾淨對照").body("普通 body"); }
+      if (n === 4) {
+        f.button("召喚夥伴", "textures/items/pokeball");
+        f.button("收回夥伴", "textures/items/greatball");
+      }
+      paths.forEach((pth, i) => f.button(`✔ 測試${i + 1}`, pth));
+      f.show(src).then((r) => {
+        if (r.canceled) { say(src, `§7你在第 ${n} 個按了取消`); return; }
+        showNext(n + 1);
+      }).catch((e) => { say(src, `第 ${n} 個表單失敗 ${e}`); showNext(n + 1); });
+    };
+    system.run(() => showNext(1));
+    return;
+  }
+
+  if (sub === "dexprobe") {
+    const f = new ActionFormData().title("圖鑑圖示探針").body("六行分別是：字面 charmander / 字面 pikachu / 函式算出 / 字面 charizard / 純圖示 / 帶顏色碼。告訴我哪幾行有圖。");
+    f.button("1 字面 charmander", "textures/items/dex_charmander");
+    f.button("2 字面 pikachu", "textures/items/dex_pikachu");
+    f.button("3 函式 charmander", (() => { const id2 = "charmander"; return `textures/items/dex_${id2}`; })());
+    f.button("4 字面 charizard 對照", "textures/items/dex_charizard");
+    f.button("5 ✔ 小火龍 x1", "textures/items/dex_charmander");
+    f.button("6 §a✔ §f小火龍 §7x1", "textures/items/dex_pikachu");
+    f.show(src).catch((e) => say(src, `${TAG} dexprobe 失敗: ${e}`));
     return;
   }
 
@@ -1405,6 +1536,14 @@ system.afterEvents.scriptEventReceive.subscribe((ev) => {
     writeDex({});
     say(src, `${TAG} 圖鑑已還原`);
   }
-}, { namespaces: ["poke"] });
+
+}
+
+system.afterEvents.scriptEventReceive.subscribe((ev) => {
+  if (!ev.id.startsWith("poke:")) return;
+  try { handlePokeSub(ev.id.slice(5), ev.sourceEntity); } catch (e) { console.warn(`${TAG} scriptevent 失敗: ${e}`); }
+});
+
+// 註：這個 BDS 版本的 Script API 沒有 chatSend 事件，聊天觸發不可用，改用 /scriptevent
 
 console.log(`${TAG} 初始化完成：招式 ${Object.keys(MOVES).length} 個、寶可夢 ${Object.keys(POKE_TYPE).length} 隻`);
